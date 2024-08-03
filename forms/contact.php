@@ -1,41 +1,57 @@
 <?php
-  /**
-  * Requires the "PHP Email Form" library
-  * The "PHP Email Form" library is available only in the pro version of the template
-  * The library should be uploaded to: vendor/php-email-form/php-email-form.php
-  * For more info and help: https://bootstrapmade.com/php-email-form/
-  */
 
-  // Replace contact@example.com with your real receiving email address
-  $receiving_email_address = 'karim.reda476@gmail.com';
+// Database connection details (replace with your own)
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "guardianbytes";
 
-  if( file_exists($php_email_form = '../assets/vendor/php-email-form/php-email-form.php' )) {
-    include( $php_email_form );
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// Check connection  
+
+if ($conn->connect_error) {
+  die("Connection failed: " . $conn->connect_error);
+}
+
+// Define variables and initialize with empty values  
+
+$name = $email = $subject = $message = "";
+
+// Processing form data after submission
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  $name = test_input($_POST["name"]);
+  $email = test_input($_POST["email"]);
+  $subject = test_input($_POST["subject"]);
+  $message = test_input($_POST["message"]);  
+
+
+  // Prepare and secure data for insertion (prevents SQL injection)
+  $stmt = $conn->prepare("INSERT INTO contact (name, email, subject, message) VALUES (?, ?, ?, ?)");
+  $stmt->bind_param("ssss", $name, $email, $subject, $message);  
+
+
+  if ($stmt->execute()) {
+    $success_message = "Your message has been sent. Thank you!";
+    echo "<script>openPopup();</script>";
+    header('Location: ../#hero/?success=' . urldecode($success_message));
+    exit;
   } else {
-    die( 'Unable to load the "PHP Email Form" Library!');
+    $error_message = "Error sending message: " . $conn->error;
   }
 
-  $contact = new PHP_Email_Form;
-  $contact->ajax = true;
-  
-  $contact->to = $receiving_email_address;
-  $contact->from_name = $_POST['name'];
-  $contact->from_email = $_POST['email'];
-  $contact->subject = $_POST['subject'];
+  $stmt->close();
+}
 
-  // Uncomment below code if you want to use SMTP to send emails. You need to enter your correct SMTP credentials
-  /*
-  $contact->smtp = array(
-    'host' => 'example.com',
-    'username' => 'example',
-    'password' => 'pass',
-    'port' => '587'
-  );
-  */
+$conn->close();
 
-  $contact->add_message( $_POST['name'], 'From');
-  $contact->add_message( $_POST['email'], 'Email');
-  $contact->add_message( $_POST['message'], 'Message', 10);
+// Function to prevent XSS attacks
+function test_input($data) {
+  $data = trim($data);
+  $data = stripslashes($data);
+  $data = htmlspecialchars($data);
+  return $data;
+}
 
-  echo $contact->send();
 ?>
